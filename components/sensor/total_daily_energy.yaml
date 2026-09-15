@@ -9,7 +9,7 @@
 
 ---
 platform: total_daily_energy
-name: "${friendly_devicename}: Daily Energy"
+name: "Daily Energy"
 power_id: power
 filters:
   # Multiplication factor from W to kW is 0.001

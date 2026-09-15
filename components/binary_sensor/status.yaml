@@ -9,5 +9,5 @@
 
 ---
 platform: status
-name: "${friendly_devicename} Status"
+name: "Status"
 device_class: connectivity

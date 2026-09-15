@@ -37,7 +37,7 @@ binary_sensor:
 
   - platform: gpio
     id: outlet_button
-    name: "${friendly_devicename}: Button"
+    name: "Button"
     pin:
       number: GPIO0
       mode: INPUT_PULLUP
@@ -55,7 +55,7 @@ binary_sensor:
 
   - platform: template
     id: threshold_status
-    name: "${friendly_devicename}: Above Threshold"
+    name: "Above Threshold"
 
 
 switch:
@@ -69,7 +69,7 @@ switch:
     # relay output
   - platform: gpio
     id: relay
-    name: "${friendly_devicename}: Relay"
+    name: "Relay"
     icon: "mdi:power-socket-us"
     pin: GPIO12
     #entity_category: ''
@@ -89,14 +89,14 @@ switch:
 button:
   - platform: restart
     id: restart_button
-    name: "${friendly_devicename}: Restart"
+    name: "Restart"
     entity_category: diagnostic
 
 
 select:
     # option to disable button
   - platform: template
-    name: "${friendly_devicename}: Enable-Disable Button"
+    name: "Enable-Disable Button"
     id: select_button
     optimistic: true
     options:
@@ -109,7 +109,7 @@ select:
 
     # option to disable blue LED
   - platform: template
-    name: "${friendly_devicename}: Enable-Disable Blue LED"
+    name: "Enable-Disable Blue LED"
     id: select_led
     optimistic: true
     entity_category: config
@@ -149,7 +149,7 @@ sensor:
   - <<: !include components/sensor/total_daily_energy.yaml
 
   - platform: template
-    name: "${friendly_devicename}: Power Factor"
+    name: "Power Factor"
     id: power_factor
     #lambda: return id(power).state / id(voltage).state / id(current).state;
     lambda: |-
@@ -159,7 +159,7 @@ sensor:
 
 number:      # used as a threshold for whether the plugged-in devices is running.
   - platform: template
-    name: "${friendly_devicename}: Power Threshold"
+    name: "Power Threshold"
     min_value: 1
     max_value: 1800
     step: 1

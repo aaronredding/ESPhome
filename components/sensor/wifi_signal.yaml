@@ -12,6 +12,6 @@
 
 ---
 platform: wifi_signal
-name: "${friendly_devicename}: WiFi Signal dB"
+name: "WiFi Signal dB"
 update_interval: ${default_update_interval}
 entity_category: "diagnostic"

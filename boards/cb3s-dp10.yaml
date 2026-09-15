@@ -1,4 +1,4 @@
-# Beken BK7231N CB3S board.
+# Beken BK7231N CB3S board — single-outlet Tuya dimmer plug (DP10).
 #
 # https://docs.platformio.org/en/latest/boards/espressif8266/esp12e.html
 # https://developer.tuya.com/en/docs/iot/cb3s?id=Kai94mec0s076
