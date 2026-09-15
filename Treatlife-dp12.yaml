@@ -4,11 +4,6 @@ substitutions:
   comment: "Treatlife Smart Dimmer Plug with 2 Sockets (DP12)"
   default_update_interval: 60s
 
-esphome:
-  name: ${device_name}
-  friendly_name: ${friendly_devicename}  
-  comment: ${comment}
-
 <<: !include boards/cb3s-dp12.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
