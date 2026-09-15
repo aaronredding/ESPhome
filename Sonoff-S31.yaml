@@ -1,0 +1,196 @@
+substitutions:
+  device_name: sonoff-s31
+  friendly_devicename: "SONOFF S31 Smart Plug"
+  comment: "Sonoff S31 Smart Plug with Energy Monitoring"
+  voltage_cal: "0.5"
+  restore_mode_setting: ALWAYS_ON
+  #restore_mode: Control how the relay attempts to restore state on bootup.
+  #RESTORE_DEFAULT_OFF          - Attempt to restore state and default to OFF if not possible to restore.
+  #RESTORE_DEFAULT_ON           - Attempt to restore state and default to ON if not possible to restore.
+  #RESTORE_INVERTED_DEFAULT_OFF - Attempt to restore state inverted from the previous state and default to OFF.
+  #RESTORE_INVERTED_DEFAULT_ON  - Attempt to restore state inverted from the previous state and default to ON.
+  #ALWAYS_OFF                   - Always initialize the pin as OFF on bootup.
+  #ALWAYS_ON                    - Always initialize the pin as ON on bootup.
+  default_update_interval: "60s"
+  cse7766_throttle_interval: "5s"
+
+<<: !include boards/esp12e.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/time/sntp-local.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi_auth.yaml
+
+
+uart:
+  rx_pin: RX
+  baud_rate: 4800
+  parity: EVEN
+
+binary_sensor:
+  #Status Binary Sensor exposes the node state (if it's connected to via MQTT/native API) for Home Assistant.
+  - <<: !include components/binary_sensor/status.yaml
+
+  - platform: gpio
+    id: outlet_button
+    name: "${friendly_devicename}: Button"
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    #entity_category: ''
+    on_press:
+        then:
+          - if:
+              condition: # only toggle relay if button is enabled
+                # ESPHome 2026.7.0 removed select::Select::state -- use current_option()
+                # (const char*), compared via std::string for readability.
+                lambda: 'return std::string(id(select_button).current_option()) == "Enabled";'
+              then:
+                switch.toggle: relay
+
+  - platform: template
+    id: threshold_status
+    name: "${friendly_devicename}: Above Threshold"
+
+
+switch:
+    # blue LED follows relay power state
+  - platform: gpio
+    id: blue_led
+    pin:
+      number: GPIO13
+      inverted: true
+
+    # relay output
+  - platform: gpio
+    id: relay
+    name: "${friendly_devicename}: Relay"
+    icon: "mdi:power-socket-us"
+    pin: GPIO12
+    #entity_category: ''
+    restore_mode: ${restore_mode_setting}
+    # whenever the relay changes, let the shared script decide what the blue LED should do
+    on_turn_on:
+      - script.execute: update_blue_led
+    on_turn_off:
+      - script.execute: update_blue_led
+
+ #Do not enable otherwise Blue led can't be configured
+ #status_led:
+ #    pin:
+ #      number: GPIO13
+
+
+button:
+  - platform: restart
+    id: restart_button
+    name: "${friendly_devicename}: Restart"
+    entity_category: diagnostic
+
+
+select:
+    # option to disable button
+  - platform: template
+    name: "${friendly_devicename}: Enable-Disable Button"
+    id: select_button
+    optimistic: true
+    options:
+      - Enabled
+      - Disabled
+    initial_option: Enabled
+    restore_value: true
+    icon: mdi:circle-double
+    entity_category: config
+
+    # option to disable blue LED
+  - platform: template
+    name: "${friendly_devicename}: Enable-Disable Blue LED"
+    id: select_led
+    optimistic: true
+    entity_category: config
+    options:
+      - Relay
+      - Threshold
+      - Disabled
+    initial_option: Relay
+    restore_value: true
+    icon: mdi:led-on
+    on_value:
+      then:
+        - script.execute: update_blue_led
+
+script:
+    # Single source of truth for "should the blue LED be on?" when it's following the relay.
+    # Called from relay on_turn_on/on_turn_off and from select_led on_value, instead of
+    # duplicating the same lambda logic in three places.
+  - id: update_blue_led
+    then:
+      - if:
+          condition:
+            lambda: 'return std::string(id(select_led).current_option()) == "Relay";'
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(relay).state;'
+                then:
+                  - switch.turn_on: blue_led
+                else:
+                  - switch.turn_off: blue_led
+
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+  - <<: !include components/sensor/cse7766.yaml
+  - <<: !include components/sensor/total_daily_energy.yaml
+
+  - platform: template
+    name: "${friendly_devicename}: Power Factor"
+    id: power_factor
+    #lambda: return id(power).state / id(voltage).state / id(current).state;
+    lambda: |-
+      auto x = id(power).state / id(voltage).state / id(current).state;
+      if (x >= 0) return x;
+          return 0.0;
+
+number:      # used as a threshold for whether the plugged-in devices is running.
+  - platform: template
+    name: "${friendly_devicename}: Power Threshold"
+    min_value: 1
+    max_value: 1800
+    step: 1
+    initial_value: 3
+    id: power_threshold
+    entity_category: config
+    optimistic: true     # required for changing value from home assistant
+    restore_value: true
+    unit_of_measurement: W
+    mode: box
+    on_value:
+      - if:
+          condition:
+            lambda: 'return (id(power).state >= x);'
+          then:
+            - binary_sensor.template.publish:
+                id: threshold_status
+                state: ON
+            - if:
+                condition:
+                  lambda: 'return std::string(id(select_led).current_option()) == "Threshold";'
+                then:
+                  - switch.turn_on: blue_led
+          else:
+            - binary_sensor.template.publish:
+                id: threshold_status
+                state: OFF
+            - if:
+                condition:
+                  lambda: 'return std::string(id(select_led).current_option()) == "Threshold";'
+                then:
+                  - switch.turn_off: blue_led
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml

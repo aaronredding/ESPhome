@@ -1,0 +1,112 @@
+substitutions:
+  device_name: treatlife-dp12
+  friendly_devicename: Treatlife DP12
+  comment: "Treatlife Smart Dimmer Plug with 2 Sockets (DP12)"
+  default_update_interval: 60s
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_devicename}  
+  comment: ${comment}
+
+<<: !include boards/cb3s.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/time/sntp-local.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi.yaml
+
+
+# Sets the communication details to MCU
+uart:
+  rx_pin: P10
+  tx_pin: P11
+  baud_rate: 115200 
+
+tuya:
+  time_id: sntp_time
+
+light:
+  - platform: "tuya"
+    name: "Outlet 1 - Dimmer"
+    id: outlet_1
+    dimmer_datapoint: 2
+    switch_datapoint: 1
+    min_value: 10
+    max_value: 1000
+  - platform: "tuya"
+    name: "Outlet 2 - Dimmer"
+    id: outlet_2
+    dimmer_datapoint: 8
+    switch_datapoint: 7
+    min_value: 10
+    max_value: 1000
+
+# This allows you to control the Dimming Mode and how the led operates when the load is on or off.
+number:
+  - platform: "tuya"
+    id: outlet1_min_brightness
+    name: "Outlet 1 - Min Brightness"
+    number_datapoint: 3
+    min_value: 10
+    max_value: 100
+    step: 10
+    entity_category: config
+  - platform: "tuya"
+    id: outlet2_min_brightness
+    name: "Outlet 2 - Min Brightness"
+    number_datapoint: 9
+    min_value: 10
+    max_value: 100
+    step: 10
+    entity_category: config
+
+select:
+  - platform: "tuya"
+    id: dimmer_mode
+    name: "Dimming Mode"
+    enum_datapoint: 10
+    options:
+      0: LED # Index 0
+      1: Incandescent # Index 1
+      2: Halogen # Index 2
+
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml
+
+# 1 - switch 1
+# 2 - dimmer 1 - current
+# 3 - dimmer 1 - brightness min = 100 Diming Range 10%= 100, 100%=1000
+# 4 - ???? - (enum value: 0)
+# 6 - ???? -  (enum value: 0)
+# 7 - switch 2
+# 8 - dimmer 2 = 763
+# 9 - dimmer 2 - brightness min = 100 Diming Range 10%= 100, 100%=1000
+# 10 - dimming mode = LED, incandescent, halogen
+# 12 - ???? - (int value : 0)
+# 21 - ???? - (enum value: 1)
+# 101 - ???? -  (raw value: 06.00.00)
+# 103 - ???? - (raw value: 00.00.00)
+
+#[16:01:25.825][C][tuya:052]: Tuya:
+#[16:01:25.825][C][tuya:069]:   Datapoint 7: switch (value: OFF)
+#[16:01:25.831][C][tuya:071]:   Datapoint 8: int value (value: 100)
+#[16:01:25.831][C][tuya:071]:   Datapoint 9: int value (value: 100)
+#[16:01:25.831][C][tuya:075]:   Datapoint 10: enum (value: 0)
+#[16:01:25.832][C][tuya:069]:   Datapoint 1: switch (value: OFF)
+#[16:01:25.837][C][tuya:071]:   Datapoint 2: int value (value: 100)
+#[16:01:25.837][C][tuya:071]:   Datapoint 3: int value (value: 100)
+#[16:01:25.840][C][tuya:075]:   Datapoint 4: enum (value: 0)
+#[16:01:25.840][C][tuya:071]:   Datapoint 12: int value (value: 0)
+#[16:01:25.845][C][tuya:071]:   Datapoint 6: int value (value: 0)
+#[16:01:25.845][C][tuya:075]:   Datapoint 21: enum (value: 1)
+#[16:01:25.848][C][tuya:066]:   Datapoint 103: raw (value: 00:00:00)
+#[16:01:25.848][C][tuya:066]:   Datapoint 101: raw (value: 06:00:00)

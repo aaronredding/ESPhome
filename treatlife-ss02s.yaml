@@ -1,0 +1,64 @@
+substitutions:
+  device_name: treatlife-ss02s
+  friendly_devicename: "Treatlife SS02S Single Pole"
+  comment: "Treatlife Single Pole Smart Switch (SS02S)"
+  default_update_interval: 60s
+
+
+<<: !include boards/esp01_1m.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi_auth.yaml
+
+binary_sensor:
+  - <<: !include components/binary_sensor/status.yaml
+  - platform: gpio
+    id: button_id
+    internal: True
+    pin: 
+      number: GPIO13
+    on_press:
+      - switch.toggle: switch_id
+
+switch:
+  - platform: gpio
+    id: switch_id
+    name: "${friendly_devicename}: Switch"
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin: GPIO12
+    on_turn_on:
+      - switch.turn_off: led_id
+    on_turn_off:
+      - switch.turn_on: led_id
+  - platform: gpio
+    id: led_id
+    internal: True
+    restore_mode: RESTORE_DEFAULT_ON
+    pin:
+      number: GPIO4
+      inverted: yes
+
+#output:
+#  - platform: gpio
+#    pin: GPIO12
+#    id: switch_output
+#  - platform: gpio
+#    pin: GPIO4
+#    id: white_led_output
+status_led:
+  # Red LED
+  pin: 
+    number: GPIO5
+    inverted: yes
+
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml

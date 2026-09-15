@@ -1,0 +1,21 @@
+#
+# Total Daily Energy Sensor
+#
+# The total_daily_energy sensor is a helper sensor that can use the energy value of other sensors
+# like the HLW8012, CSE7766, etc and integrate it over time.
+#
+# https://esphome.io/components/sensor/total_daily_energy
+#
+
+---
+platform: total_daily_energy
+name: "${friendly_devicename}: Daily Energy"
+power_id: power
+filters:
+  # Multiplication factor from W to kW is 0.001
+  - multiply: 0.001
+unit_of_measurement: kWh
+state_class: total_increasing
+device_class: energy
+# 3 shows each W consumed, 2 every 10W, 1 every 100W
+accuracy_decimals: 1

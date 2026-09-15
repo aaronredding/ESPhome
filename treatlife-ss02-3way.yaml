@@ -1,0 +1,126 @@
+# ============================================================
+# TreatLife SS02 — 3-Way Smart Switch (SS02 + dumb traveler)
+# ESPHome 2024.x+ | Home Assistant Native API
+# ============================================================
+# GPIO Pinout (ESP8266 / TYWE3S):
+#   GPIO04  — White LED (relay state indicator, inverted)
+#   GPIO05  — Red LED   (Wi-Fi / status indicator, inverted)
+#   GPIO12  — Relay output
+#   GPIO13  — Physical button on smart switch (inverted)
+#   GPIO14  — Traveler input from dumb 3-way switch (inverted)
+# ============================================================
+
+substitutions:
+  device_name: treatlife-ss02-3way
+  friendly_devicename: Treatlife SS02 3-Way
+  comment: "Treatlife 3 Way Smart Switch (SS02)"
+  default_update_interval: 60s
+
+<<: !include boards/esp01_1m.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi_auth.yaml
+
+# ── Binary Sensors ───────────────────────────────────────────
+binary_sensor:
+  - <<: !include components/binary_sensor/status.yaml
+  # Physical button on the SS02 itself
+  - platform: gpio
+    id: smart_switch_button
+    pin:
+      number: GPIO13
+      inverted: true
+    internal: true
+    on_press:
+      then:
+        - switch.toggle: relay
+    
+  - platform: gpio
+    id: power_sensor
+    pin:
+      number: GPIO14
+      inverted: true
+    internal: true
+    filters:
+      - delayed_off: 50ms
+    on_press:
+      - light.turn_off: white_led
+    on_release:
+      - light.turn_on: white_led
+
+# ── Buttons ──────────────────────────────────────────────────
+button:
+  - platform: restart
+    name: "${friendly_devicename}: Reboot"
+    entity_category: diagnostic
+
+  - platform: safe_mode
+    name: "${friendly_devicename}: Reboot Safe Mode"
+    entity_category: diagnostic
+
+# ── Lights ───────────────────────────────────────────────────
+light:
+  # White LED mirrors relay state
+  - platform: binary
+    id: white_led
+    output: white_led_output
+    internal: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+# ── Outputs ──────────────────────────────────────────────────
+output:
+  # White LED — mirrors relay state (on when light is on)
+  - platform: gpio
+    id: white_led_output
+    pin:
+      number: GPIO4
+      inverted: True
+
+# ── Sensors ──────────────────────────────────────────────────
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+
+# ── Status LED (Red LED = Wi-Fi/API health indicator) ────────
+status_led:
+  pin: 
+    number: GPIO5  # Red LED
+    inverted: True
+
+# ── Switches ─────────────────────────────────────────────────
+switch:
+  - platform: gpio
+    pin: GPIO12
+    id: relay
+    restore_mode: RESTORE_DEFAULT_OFF
+    internal: True
+
+  - platform: template
+    name: ${friendly_devicename}
+    id: light_switch
+    lambda: |-
+      if (id(power_sensor).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+    - if:
+        condition:
+          - binary_sensor.is_off: power_sensor
+        then:
+          - switch.toggle: relay
+    turn_off_action:
+    - if:
+        condition:
+          - binary_sensor.is_on: power_sensor
+        then:
+          - switch.toggle: relay
+
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml

@@ -1,0 +1,8 @@
+# uptime
+
+platform: uptime
+name: "${friendly_devicename}: Uptime"
+unit_of_measurement: min
+filters:
+    - lambda: return x / 60.0;
+entity_category: "diagnostic"

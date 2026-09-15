@@ -1,0 +1,11 @@
+# Beken BK7231N CB3S board.
+#
+# https://docs.platformio.org/en/latest/boards/espressif8266/esp12e.html
+# https://developer.tuya.com/en/docs/iot/cb3s?id=Kai94mec0s076
+
+---
+esphome:
+  <<: !include "../components/esphome_dp10.yaml"
+
+bk72xx:
+  board: cb3s

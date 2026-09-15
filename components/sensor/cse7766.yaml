@@ -1,0 +1,55 @@
+#https://esphome.io/components/sensor/cse7766.html      
+
+---
+platform: cse7766
+current:
+  name: "${friendly_devicename}: Current"
+  id: current
+  state_class: measurement
+  device_class: current
+  unit_of_measurement: A
+  accuracy_decimals: 1
+  filters:
+    - throttle: ${cse7766_throttle_interval}
+voltage:
+  name: "${friendly_devicename}: Voltage"
+  id: voltage
+  state_class: measurement
+  device_class: voltage
+  unit_of_measurement: V
+  accuracy_decimals: 1
+  filters:
+    - throttle: ${cse7766_throttle_interval}
+    - offset: ${voltage_cal}
+power:
+  name: "${friendly_devicename}: Power"
+  id: power
+  state_class: measurement
+  device_class: power
+  unit_of_measurement: W
+  accuracy_decimals: 1
+  filters:
+    - throttle: ${cse7766_throttle_interval}
+  on_value:   # set or clear threshold_status template binary sensor depending on whether power usage is over threshold
+    - if:
+        condition:
+          lambda: 'return (x >= id(power_threshold).state);'
+        then:
+          - binary_sensor.template.publish:
+              id: threshold_status
+              state: ON
+          - if:               # set or clear threshold_status template binary sensor depending on whether power usage is above threshold
+              condition:
+                # ESPHome 2026.7.0 removed select::Select::state -- use current_option() instead
+                lambda: 'return std::string(id(select_led).current_option()) == "Threshold";'
+              then:
+                - switch.turn_on: blue_led
+        else:
+          - binary_sensor.template.publish:
+              id: threshold_status
+              state: OFF
+          - if:               # set or clear threshold_status template binary sensor depending on whether power usage is above threshold
+              condition:
+                lambda: 'return std::string(id(select_led).current_option()) == "Threshold";'
+              then:
+                - switch.turn_off: blue_led

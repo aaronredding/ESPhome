@@ -1,0 +1,76 @@
+substitutions:
+  device_name: treatlife-dp10
+  friendly_devicename: Treatlife DP10
+  comment: "Treatlife Smart Dimmer Plug (DP10)"
+  default_update_interval: 60s
+
+
+<<: !include boards/cb3s.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/time/sntp-local.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi.yaml
+
+# Sets the communication details to MCU
+uart:
+  rx_pin: P10
+  tx_pin: P11
+  baud_rate: 115200 
+
+# Loads TUYA library to communicate with MCU and sends the time to the MCU
+tuya:
+  time_id: sntp_time
+
+binary_sensor:
+  - <<: !include components/binary_sensor/status.yaml
+
+light:
+  - platform: "tuya"
+    name: "${friendly_devicename}: Outlet"
+    id: outlet_1
+    dimmer_datapoint: 2
+    switch_datapoint: 1
+    min_value: 10
+    max_value: 1000
+
+select:
+  - platform: "tuya"
+    id: "dimmer_mode"
+    name: "${friendly_devicename}: Dimming Mode"
+    enum_datapoint: 4
+    options:
+      0: LED # Index 0
+      1: Incandescent # Index 1
+      2: Halogen # Index 2
+
+number:
+  - platform: "tuya"
+    id: "min_brightness"
+    name: "${friendly_devicename}: Min Brightness"
+    number_datapoint: 3
+    min_value: 10
+    max_value: 100
+    step: 10
+    entity_category: config
+
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml
+
+# Datapoint - Description
+# 1 - switch
+# 2 - current dimmer level 100 = 10% / 1000 = 100%
+# 3 - dimmer - min brightness 
+# 4 - dimming mode = LED, incandescent, halogen
+# 101 - ???? - (int value 1)
+# 102 - Light Follow Mode - Follow or Opposite
+# 104 - ???? - 
+# 105 - ????

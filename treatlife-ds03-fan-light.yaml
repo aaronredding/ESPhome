@@ -1,0 +1,70 @@
+substitutions:
+  device_name: treatlife-ds03
+  friendly_devicename: Treatlife ds03
+  comment: "Treatlife Fan Dimmer (DS03)"
+  default_update_interval: 60s
+
+<<: !include boards/esp01_1m.yaml
+<<: !include components/api.yaml
+<<: !include components/captive_portal.yaml
+<<: !include components/logger.yaml
+<<: !include components/mdns.yaml
+<<: !include components/ota/esphome.yaml
+<<: !include components/safe_mode.yaml
+<<: !include components/time/sntp-local.yaml
+<<: !include components/web_server.yaml
+<<: !include components/wifi_auth.yaml
+
+tuya:
+  time_id: sntp_time
+
+uart:
+  rx_pin: GPIO3
+  tx_pin: GPIO1
+  baud_rate: 115200
+
+binary_sensor:
+  - <<: !include components/binary_sensor/status.yaml
+
+light:
+  - platform: "tuya"
+    id: light_id
+    name: "Light"
+    dimmer_datapoint: 10
+    switch_datapoint: 9
+    min_value: 10
+    max_value: 1000
+    restore_mode: RESTORE_DEFAULT_OFF
+
+fan:
+  - platform: "tuya"
+    name: "Fan Speed"
+    switch_datapoint: 1
+    speed_datapoint: 3
+    speed_count: 4
+
+number:
+  - platform: "tuya"
+    name: "${friendly_devicename}: Min Brightness"
+    entity_category: config
+    min_value: 10
+    max_value: 100
+    step: 10
+    number_datapoint: 105
+
+
+sensor:
+  - <<: !include components/sensor/wifi_signal.yaml
+  - <<: !include components/sensor/uptime.yaml
+
+text_sensor:
+  - <<: !include components/text_sensor/wifi_info.yaml
+
+# Datapoint notes
+#1 - FAN - SWITCH(ON/OFF)
+#3 - FAN - SPEED CONTROL
+
+#9 - LIGHT - SWITCH(ON/OFF)
+#10 - LIGHT - DIMMER CONTROL
+
+#105 - Minimum brightness = 10

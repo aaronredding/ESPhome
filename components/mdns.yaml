@@ -1,0 +1,17 @@
+#
+# mDNS Component
+#
+# The mdns component makes the node announce itself on the local network using the 
+# multicast DNS (mDNS) protocol.
+# Both Home Assistant and the ESPHome dashboard use mDNS to identify the IP address 
+# of all ESPHome nodes on the network. If mDNS is disabled, they will no longer be 
+# able to automatically find your devices. It may be necessary to use a static IP 
+# for all nodes and to enable the ping option in the Home Assistant add-on.
+#
+# https://esphome.io/components/mdns.html
+#
+
+---
+mdns:
+  disabled: True
+
