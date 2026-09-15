@@ -3,7 +3,7 @@
 ---
 platform: cse7766
 current:
-  name: "${friendly_devicename}: Current"
+  name: "Current"
   id: current
   state_class: measurement
   device_class: current
@@ -12,7 +12,7 @@ current:
   filters:
     - throttle: ${cse7766_throttle_interval}
 voltage:
-  name: "${friendly_devicename}: Voltage"
+  name: "Voltage"
   id: voltage
   state_class: measurement
   device_class: voltage
@@ -22,7 +22,7 @@ voltage:
     - throttle: ${cse7766_throttle_interval}
     - offset: ${voltage_cal}
 power:
-  name: "${friendly_devicename}: Power"
+  name: "Power"
   id: power
   state_class: measurement
   device_class: power

@@ -45,7 +45,7 @@ fan:
 
 number:
   - platform: "tuya"
-    name: "${friendly_devicename}: Min Brightness"
+    name: "Min Brightness"
     entity_category: config
     min_value: 10
     max_value: 100

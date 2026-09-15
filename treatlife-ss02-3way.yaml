@@ -56,11 +56,11 @@ binary_sensor:
 # ── Buttons ──────────────────────────────────────────────────
 button:
   - platform: restart
-    name: "${friendly_devicename}: Reboot"
+    name: "Reboot"
     entity_category: diagnostic
 
   - platform: safe_mode
-    name: "${friendly_devicename}: Reboot Safe Mode"
+    name: "Reboot Safe Mode"
     entity_category: diagnostic
 
 # ── Lights ───────────────────────────────────────────────────
@@ -101,7 +101,7 @@ switch:
     internal: True
 
   - platform: template
-    name: ${friendly_devicename}
+    name: ""
     id: light_switch
     lambda: |-
       if (id(power_sensor).state) {

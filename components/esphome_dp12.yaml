@@ -1,0 +1,20 @@
+#
+# ESPHome Core Configuration
+#
+# Here you specify some core information that ESPHome needs to create
+# firmwares. Most importantly, this is the section of the configuration where
+# you specify the name of the node.
+#
+# https://esphome.io/components/esphome
+#
+
+---
+name: ${device_name}
+comment: ${comment}
+friendly_name: ${friendly_devicename}
+on_boot:
+  priority: 600
+  then:
+    lambda: |-
+      id(outlet_1).remote_values.set_brightness(1000);
+      id(outlet_2).remote_values.set_brightness(1000);

@@ -9,7 +9,7 @@ esphome:
   friendly_name: ${friendly_devicename}  
   comment: ${comment}
 
-<<: !include boards/cb3s.yaml
+<<: !include boards/cb3s-dp12.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
 <<: !include components/logger.yaml
