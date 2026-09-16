@@ -1,0 +1,37 @@
+#
+# ESPHome Core Configuration — TreatLife DS02S
+#
+# Here you specify some core information that ESPHome needs to create
+# firmwares. Most importantly, this is the section of the configuration where
+# you specify the name of the node.
+#
+# https://esphome.io/components/esphome
+#
+# DS02S-specific additions over components/esphome.yaml:
+#
+#   on_boot — The Tuya MCU does not reliably restore load_type or
+#     indicator_led across a power cycle, so both are re-asserted to
+#     index 0 on every boot. No explicit priority is set, so this runs
+#     at the default (600) after components are set up but before
+#     network is up, which is fine — these are MCU-side settings, not
+#     network ones.
+#
+#   platformio_options lib_ignore: RPAsyncTCP — Required on this
+#     platform. Without it the build pulls in a conflicting async TCP
+#     library alongside the one the web server needs, and fails to link.
+#
+
+---
+name: ${device_name}
+comment: ${comment}
+friendly_name: ${friendly_devicename}
+on_boot:
+  then:
+    - select.set_index:
+        id: "load_type"
+        index: 0
+    - select.set_index:
+        id: "indicator_led"
+        index: 0
+platformio_options:
+  lib_ignore: RPAsyncTCP

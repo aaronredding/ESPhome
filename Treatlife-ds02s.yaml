@@ -3,7 +3,7 @@
 # ============================================================
 # Hardware:
 #   Module        — WB3S (Beken BK7231T)
-#   Board target  — generic-bk7231t-qfn32-tuya (declared inline below)
+#   Board target  — generic-bk7231t-qfn32-tuya (see boards/wb3s-ds02s.yaml)
 #   Control       — TuyaMCU (Nuvoton) over UART. ESPHome does not drive
 #                   the triac; the MCU owns dimming and is driven
 #                   entirely through datapoints.
@@ -17,12 +17,10 @@
 #   https://github.com/tuya-cloudcutter/tuya-cloudcutter
 #
 # Notes specific to this device:
-#   - STRUCTURAL EXCEPTION: this is the only device config that declares
-#     its own esphome: and bk72xx: blocks inline instead of pulling in a
-#     boards/*.yaml include like every other device here. It also still
-#     carries the ${friendly_devicename} prefix on entity names, which
-#     was stripped from the rest of the fleet. Align both if you want
-#     consistency — left as-is for now to avoid an untested reflash.
+#   - This device needs its own esphome: core block rather than the
+#     shared components/esphome.yaml, because of the on_boot select
+#     re-assertion and the platformio_options override. Both live in
+#     components/esphome_ds02s.yaml, pulled in via boards/wb3s-ds02s.yaml.
 #   - platformio_options lib_ignore: RPAsyncTCP is required; without it
 #     the build pulls a conflicting async TCP library on this platform.
 #   - on_boot forces load_type and indicator_led back to index 0. The
@@ -48,28 +46,8 @@ substitutions:
   comment: "Treatlife Single Pole Smart Dimmer Switch (DS02S)"
   default_update_interval: 60s
 
-# ---- Core / board (declared inline — see header) --------------
-esphome:
-  name: ${device_name}
-  friendly_name: ${friendly_devicename}
-  comment: ${comment}
-  on_boot:
-    then:
-      - select.set_index: 
-          id: "load_type"
-          index: 0
-      - select.set_index:
-          id: "indicator_led"
-          index: 0
-  platformio_options: 
-    lib_ignore: RPAsyncTCP
-    
-
-# The board type for this device
-bk72xx:
-  board: generic-bk7231t-qfn32-tuya
-
 # ---- Shared includes -----------------------------------------
+<<: !include boards/wb3s-ds02s.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
 <<: !include components/logger.yaml
@@ -101,7 +79,7 @@ binary_sensor:
 # The dimmable load. Restores OFF rather than resuming prior state.
 light:
   - platform: "tuya"
-    name: "${friendly_devicename}: Switch"
+    name: ""
     id: light_id
     dimmer_datapoint: 2
     switch_datapoint: 1
@@ -114,21 +92,21 @@ light:
 number:
   - platform: "tuya"
     id: min_brightness
-    name: "${friendly_devicename}: Min Brightness"
+    name: "Min Brightness"
     number_datapoint: 3
     min_value: 10
     max_value: 100
     step: 10
     entity_category: config
 
-# ── Buttons ──────────────────────────────────────────────────
+# ---- Buttons -------------------------------------------------──────
 button:
   - platform: restart
-    name: "${friendly_devicename}: Reboot"
+    name: "Reboot"
     entity_category: diagnostic
 
   - platform: safe_mode
-    name: "${friendly_devicename}: Reboot Safe Mode"
+    name: "Reboot Safe Mode"
     entity_category: diagnostic
 
 # ---- Selects (config entities) -------------------------------
@@ -138,7 +116,7 @@ button:
 select:
   - platform: "tuya"
     id: load_type
-    name: "${friendly_devicename}: Load Type"
+    name: "Load Type"
     enum_datapoint: 4
     options:
       0: "LED"
@@ -148,7 +126,7 @@ select:
 
   - platform: "tuya"
     id: indicator_led
-    name: "${friendly_devicename}: Indicator Mode"
+    name: "Indicator Mode"
     int_datapoint: 104
     options:
       0: "Opposite"

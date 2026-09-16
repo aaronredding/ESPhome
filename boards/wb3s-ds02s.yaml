@@ -1,0 +1,19 @@
+# Beken BK7231T WB3S board — TreatLife DS02S single-pole dimmer switch.
+#
+# The WB3S is a Tuya module built around the Beken BK7231T. LibreTiny's
+# closest generic target is used rather than a named board profile, since
+# there is no DS02S-specific board definition upstream.
+#
+# https://docs.libretiny.eu/boards/generic-bk7231t-qfn32-tuya/
+# https://developer.tuya.com/en/docs/iot/wb3s-module-datasheet
+#
+# Pulls in an esphome_ds02s.yaml core rather than the shared
+# components/esphome.yaml, because this device needs an on_boot block and
+# a platformio_options override — see that file for why.
+
+---
+esphome:
+  <<: !include "../components/esphome_ds02s.yaml"
+
+bk72xx:
+  board: generic-bk7231t-qfn32-tuya
