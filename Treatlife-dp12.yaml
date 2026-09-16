@@ -1,6 +1,6 @@
 substitutions:
-  device_name: outdoor-dp12-1
-  friendly_devicename: Outdoor DP12-1
+  device_name: treatlife-dp12
+  friendly_devicename: Treatlife DP12
   comment: "Treatlife Smart Dimmer Plug with 2 Sockets (DP12)"
   default_update_interval: 60s
 
