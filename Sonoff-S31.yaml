@@ -1,3 +1,34 @@
+# ============================================================
+# Sonoff S31 — Smart Plug with Energy Monitoring
+# ============================================================
+# Hardware:
+#   Module          — ESP8266 (ESP-12E class)
+#   Board target    — esp12e (see boards/esp12e.yaml)
+#   Energy metering — CSE7766, read over hardware UART
+#
+# GPIO Pinout:
+#   GPIO0   — Push button (INPUT_PULLUP, inverted: HIGH = off, LOW = on)
+#   GPIO12  — Relay output
+#   GPIO13  — Blue LED (inverted)
+#   RX      — CSE7766 energy monitor data (4800 baud, EVEN parity)
+#
+# Flashing:
+#   Cannot be converted over the air — no tuya-convert / cloudcutter path.
+#   Requires opening the case and using the serial header for the first
+#   upload; hold the button while powering on to enter bootloader mode.
+#   Subsequent updates are OTA.
+#
+# Notes specific to this device:
+#   - UART logging is disabled on the S31 elsewhere in the fleet because
+#     serial logging interferes with the CSE7766 (see logger_cse7766.yaml).
+#     This config uses the standard logger include; if CSE7766 readings
+#     become erratic, switch the logger include to logger_cse7766.yaml.
+#   - early_pin_init: false is set in boards/esp12e.yaml to stop the relay
+#     from audibly clicking on-off-on during firmware upload.
+#   - The blue LED is deliberately NOT bound to status_led, so it can be
+#     repurposed by the "Enable-Disable Blue LED" select below.
+# ============================================================
+
 substitutions:
   device_name: sonoff-s31
   friendly_devicename: "SONOFF S31 Smart Plug"
@@ -14,6 +45,7 @@ substitutions:
   default_update_interval: "60s"
   cse7766_throttle_interval: "5s"
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/esp12e.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -26,11 +58,14 @@ substitutions:
 <<: !include components/wifi_auth.yaml
 
 
+# ---- UART ----------------------------------------------------
+# CSE7766 energy monitor link. Fixed 4800/EVEN by the metering chip.
 uart:
   rx_pin: RX
   baud_rate: 4800
   parity: EVEN
 
+# ---- Binary Sensors ------------------------------------------
 binary_sensor:
   #Status Binary Sensor exposes the node state (if it's connected to via MQTT/native API) for Home Assistant.
   - <<: !include components/binary_sensor/status.yaml
@@ -58,6 +93,7 @@ binary_sensor:
     name: "Above Threshold"
 
 
+# ---- Switches ------------------------------------------------
 switch:
     # blue LED follows relay power state
   - platform: gpio
@@ -86,6 +122,7 @@ switch:
  #      number: GPIO13
 
 
+# ---- Buttons -------------------------------------------------
 button:
   - platform: restart
     id: restart_button
@@ -93,6 +130,8 @@ button:
     entity_category: diagnostic
 
 
+# ---- Selects (config entities) -------------------------------
+# Two user-facing behaviour options, both persisted across reboots.
 select:
     # option to disable button
   - platform: template
@@ -124,6 +163,7 @@ select:
       then:
         - script.execute: update_blue_led
 
+# ---- Scripts -------------------------------------------------
 script:
     # Single source of truth for "should the blue LED be on?" when it's following the relay.
     # Called from relay on_turn_on/on_turn_off and from select_led on_value, instead of
@@ -142,6 +182,7 @@ script:
                 else:
                   - switch.turn_off: blue_led
 
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
@@ -157,6 +198,7 @@ sensor:
       if (x >= 0) return x;
           return 0.0;
 
+# ---- Numbers -------------------------------------------------
 number:      # used as a threshold for whether the plugged-in devices is running.
   - platform: template
     name: "Power Threshold"
@@ -192,5 +234,6 @@ number:      # used as a threshold for whether the plugged-in devices is running
                   lambda: 'return std::string(id(select_led).current_option()) == "Threshold";'
                 then:
                   - switch.turn_off: blue_led
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml

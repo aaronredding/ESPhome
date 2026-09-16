@@ -1,13 +1,42 @@
 # ============================================================
 # TreatLife SS02 — 3-Way Smart Switch (SS02 + dumb traveler)
-# ESPHome 2024.x+ | Home Assistant Native API
 # ============================================================
-# GPIO Pinout (ESP8266 / TYWE3S):
-#   GPIO04  — White LED (relay state indicator, inverted)
-#   GPIO05  — Red LED   (Wi-Fi / status indicator, inverted)
+# Hardware:
+#   Module        — ESP8266 / TYWE3S
+#   Board target  — esp01_1m (see boards/esp01_1m.yaml)
+#   Control       — Direct GPIO. No Tuya MCU; ESPHome drives the relay
+#                   and LEDs itself.
+#
+# GPIO Pinout:
+#   GPIO4   — White LED (relay state indicator, inverted)
+#   GPIO5   — Red LED   (Wi-Fi / status indicator, inverted)
 #   GPIO12  — Relay output
 #   GPIO13  — Physical button on smart switch (inverted)
 #   GPIO14  — Traveler input from dumb 3-way switch (inverted)
+#
+# In service:
+#   Stairwell lighting. This SS02 is at one end; a conventional
+#   (non-smart) 3-way switch sits at the bottom of the stairs.
+#
+# How the 3-way logic works — read before editing:
+#   In a 3-way circuit the load state depends on BOTH switches, so the
+#   relay position alone does not tell you whether the light is on.
+#   GPIO14 senses the traveler line and is the real source of truth.
+#   The template switch below reports power_sensor (not the relay) as
+#   its state, and its turn_on/turn_off actions toggle the relay only
+#   when the sensed state doesn't already match the request. Flipping
+#   the dumb switch changes power_sensor without ESPHome doing anything,
+#   and Home Assistant follows along correctly.
+#   The 50ms delayed_off filter debounces traveler transitions.
+#
+# Notes specific to this device:
+#   - The white LED is driven inverse to the sensed load state, so the
+#     switch is findable in a dark stairwell.
+#   - The red LED is bound to status_led (Wi-Fi/API health) and is not
+#     separately controllable.
+#   - relay and the GPIO button are internal: True — only the template
+#     switch is exposed to Home Assistant, so HA can't desync the logic
+#     by driving the relay directly.
 # ============================================================
 
 substitutions:
@@ -16,6 +45,7 @@ substitutions:
   comment: "Treatlife 3 Way Smart Switch (SS02)"
   default_update_interval: 60s
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/esp01_1m.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -40,6 +70,8 @@ binary_sensor:
       then:
         - switch.toggle: relay
     
+  # Traveler sense from the dumb switch — the real load state.
+  # See the 3-way logic note in the header.
   - platform: gpio
     id: power_sensor
     pin:
@@ -93,6 +125,8 @@ status_led:
     inverted: True
 
 # ── Switches ─────────────────────────────────────────────────
+# relay is internal; the template switch below is the HA-facing
+# entity and reports the SENSED load state, not the relay position.
 switch:
   - platform: gpio
     pin: GPIO12

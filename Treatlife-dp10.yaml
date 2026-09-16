@@ -1,3 +1,45 @@
+# ============================================================
+# TreatLife DP10 — Outdoor Smart Dimmer Plug (single socket)
+# ============================================================
+# Hardware:
+#   Module        — CB3S-FT
+#   Chip          — Beken BK7231N
+#   Board target  — cb3s (see boards/cb3s-dp10.yaml)
+#   Control       — TuyaMCU over UART; ESPHome does not drive the
+#                   dimmer directly, it speaks to the Tuya MCU which
+#                   owns the triac. All control is via datapoints.
+#
+# UART / MCU:
+#   P10 — RX      P11 — TX      115200 baud
+#
+# Rated load (per TreatLife): 150W LED / 400W incandescent
+#
+# Flashing:
+#   Converted with Tuya-CloudCutter (no disassembly required).
+#   https://github.com/tuya-cloudcutter/tuya-cloudcutter
+#
+# In service:
+#   Controls dimmable outdoor LED string lights.
+#
+# Notes specific to this device:
+#   - boards/cb3s-dp10.yaml pulls in components/esphome_dp10.yaml, which
+#     forces outlet_1 to full brightness in on_boot. The Tuya MCU does not
+#     reliably restore its brightness level across a power cycle, so
+#     without this the lights can come back at an unexpected level.
+#   - Do NOT point this device at boards/cb3s-dp12.yaml — that variant
+#     also addresses outlet_2, which does not exist on the DP10.
+#
+# Tuya datapoints (dpIDs):
+#   1   — switch (on/off)
+#   2   — current dimmer level (100 = 10%, 1000 = 100%)
+#   3   — dimmer minimum brightness
+#   4   — dimming mode: LED / incandescent / halogen
+#   101 — unidentified (int value 1)
+#   102 — light follow mode: Follow or Opposite (NOT yet exposed below)
+#   104 — unidentified
+#   105 — unidentified
+# ============================================================
+
 substitutions:
   device_name: treatlife-dp10
   friendly_devicename: Treatlife DP10
@@ -5,6 +47,7 @@ substitutions:
   default_update_interval: 60s
 
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/cb3s-dp10.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -26,9 +69,13 @@ uart:
 tuya:
   time_id: sntp_time
 
+# ---- Binary Sensors ------------------------------------------
 binary_sensor:
   - <<: !include components/binary_sensor/status.yaml
 
+# ---- Lights --------------------------------------------------
+# The dimmable outlet. Presented as a light so HA gets a brightness
+# slider; min_value 10 matches the MCU's own floor.
 light:
   - platform: "tuya"
     name: "Outlet"
@@ -38,6 +85,9 @@ light:
     min_value: 10
     max_value: 1000
 
+# ---- Selects (config entities) -------------------------------
+# Tells the MCU what kind of load is attached so it can pick the
+# right dimming curve. Wrong setting = flicker or buzzing.
 select:
   - platform: "tuya"
     id: "dimmer_mode"
@@ -48,6 +98,9 @@ select:
       1: Incandescent # Index 1
       2: Halogen # Index 2
 
+# ---- Numbers (config entities) -------------------------------
+# Raises the dimming floor for loads that cut out or flicker at the
+# bottom of the range.
 number:
   - platform: "tuya"
     id: "min_brightness"
@@ -58,19 +111,11 @@ number:
     step: 10
     entity_category: config
 
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
 
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml
-
-# Datapoint - Description
-# 1 - switch
-# 2 - current dimmer level 100 = 10% / 1000 = 100%
-# 3 - dimmer - min brightness 
-# 4 - dimming mode = LED, incandescent, halogen
-# 101 - ???? - (int value 1)
-# 102 - Light Follow Mode - Follow or Opposite
-# 104 - ???? - 
-# 105 - ????

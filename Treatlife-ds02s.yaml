@@ -1,10 +1,54 @@
+# ============================================================
+# TreatLife DS02S — Single-Pole Smart Dimmer Switch
+# ============================================================
+# Hardware:
+#   Module        — WB3S (Beken BK7231T)
+#   Board target  — generic-bk7231t-qfn32-tuya (declared inline below)
+#   Control       — TuyaMCU (Nuvoton) over UART. ESPHome does not drive
+#                   the triac; the MCU owns dimming and is driven
+#                   entirely through datapoints.
+#
+# UART / MCU:
+#   GPIO10 — RX     GPIO11 — TX     115200 baud
+#   rx_buffer_size is raised to 512 for this MCU's chattier dp stream.
+#
+# Flashing:
+#   Converted with Tuya-CloudCutter.
+#   https://github.com/tuya-cloudcutter/tuya-cloudcutter
+#
+# Notes specific to this device:
+#   - STRUCTURAL EXCEPTION: this is the only device config that declares
+#     its own esphome: and bk72xx: blocks inline instead of pulling in a
+#     boards/*.yaml include like every other device here. It also still
+#     carries the ${friendly_devicename} prefix on entity names, which
+#     was stripped from the rest of the fleet. Align both if you want
+#     consistency — left as-is for now to avoid an untested reflash.
+#   - platformio_options lib_ignore: RPAsyncTCP is required; without it
+#     the build pulls a conflicting async TCP library on this platform.
+#   - on_boot forces load_type and indicator_led back to index 0. The
+#     Tuya MCU does not reliably restore these across a power cycle.
+#   - The indicator LED select uses int_datapoint (104), not
+#     enum_datapoint, because the MCU reports it as an int.
+#
+# Tuya datapoints (dpIDs):
+#   1   — switch (on/off)
+#   2   — dimmer level
+#   3   — minimum brightness (1% = 10, 100% = 1000)
+#   4   — dimming mode / load type: LED / incandescent / halogen
+#   101 — led_bright low / wake_up (observed value AAAA)
+#   102 — count_down (observed value 0)
+#   103 — bright_value_3 (observed value 10)
+#   104 — LED indicator mode: Opposite / Follow
+#   105 — random time
+# ============================================================
+
 substitutions:
   device_name: treatlife-ds02s
   friendly_devicename: Treatlife DS02S Dimmer
   comment: "Treatlife Single Pole Smart Dimmer Switch (DS02S)"
   default_update_interval: 60s
 
-# Esphome core information
+# ---- Core / board (declared inline — see header) --------------
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_devicename}
@@ -25,6 +69,7 @@ esphome:
 bk72xx:
   board: generic-bk7231t-qfn32-tuya
 
+# ---- Shared includes -----------------------------------------
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
 <<: !include components/logger.yaml
@@ -35,21 +80,25 @@ bk72xx:
 <<: !include components/web_server.yaml
 <<: !include components/wifi.yaml
 
-# Loads TUYA library to communicate with MCU and sends the time to the MCU
+# ---- TuyaMCU -------------------------------------------------
+# Loads the Tuya library and pushes network time down to the MCU.
 tuya:
   time_id: sntp_time
 
-# Sets the communication details to MCU
+# ---- UART ----------------------------------------------------
+# Link to the Tuya MCU. Buffer raised for this MCU's dp stream.
 uart:
   rx_pin: GPIO10
   tx_pin: GPIO11
   baud_rate: 115200
   rx_buffer_size: 512
 
+# ---- Binary Sensors ------------------------------------------
 binary_sensor:
   - <<: !include components/binary_sensor/status.yaml
 
-# Main light entity
+# ---- Lights --------------------------------------------------
+# The dimmable load. Restores OFF rather than resuming prior state.
 light:
   - platform: "tuya"
     name: "${friendly_devicename}: Switch"
@@ -60,7 +109,8 @@ light:
     max_value: 1000
     restore_mode: RESTORE_DEFAULT_OFF
 
-# This allows you to control the Dimming Mode and how the led operates when the load is on or off.
+# ---- Numbers (config entities) -------------------------------
+# Dimming floor for loads that cut out at the bottom of the range.
 number:
   - platform: "tuya"
     id: min_brightness
@@ -81,6 +131,10 @@ button:
     name: "${friendly_devicename}: Reboot Safe Mode"
     entity_category: diagnostic
 
+# ---- Selects (config entities) -------------------------------
+# load_type picks the MCU dimming curve (wrong setting = flicker or
+# buzz). indicator_led sets whether the LED follows or opposes the
+# load. Both are re-asserted in on_boot — see header.
 select:
   - platform: "tuya"
     id: load_type
@@ -102,20 +156,11 @@ select:
     entity_category: config
 
 
-# Datapoint notes
-#1 - switch
-#2 - dimmer = 763
-#3 - brightness min = 10 Diming Range 1%= 10, 100%=1000
-#4 - dimming mode = LED, incandescent, halogen
-#101 - led_bright low/ wake_up value=AAAA
-#102 - count_down value=0
-#103 - bright_value_3 = 10
-#104 - led indicator
-#105 - random time
-
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
 
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml
