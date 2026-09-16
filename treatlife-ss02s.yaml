@@ -1,3 +1,42 @@
+# ============================================================
+# TreatLife SS02S — Single-Pole Smart Switch
+# ============================================================
+# Hardware:
+#   Module        — TYWE3S (ESP8266-based Tuya module)
+#   Board target  — esp01_1m (see boards/esp01_1m.yaml)
+#   Control       — Direct GPIO. No Tuya MCU on this device; ESPHome
+#                   drives the relay and LEDs itself.
+#
+# GPIO Pinout (TYWE3S variant):
+#   GPIO4   — White LED (relay-state indicator, inverted)
+#   GPIO5   — Red LED (Wi-Fi / status indicator, inverted)
+#   GPIO12  — Relay output
+#   GPIO13  — Physical button
+#
+# !! CHIP VARIANT WARNING !!
+#   SS02S units ship with TWO different modules: TYWE3S (ESP8266, what
+#   this config targets) and CB3S-FT (Beken BK7231, which needs a
+#   bk72xx board target instead of esp8266 — this config will NOT run
+#   on it). The LED pin assignments also differ between the two boards.
+#   A CB3S-FT unit needs its own config file; do not flash this one to it.
+#   Reference: https://devices.esphome.io/devices/treatlife-ss02s/
+#
+# Flashing:
+#   TYWE3S units were converted with Tuya-Convert (to Tasmota first,
+#   then ESPHome). CB3S-FT units require disassembly and soldering, or
+#   Tuya-CloudCutter if a matching profile exists.
+#
+# Notes specific to this device:
+#   - The switch entity uses name: "" so Home Assistant names it after
+#     the device's friendly_name rather than doubling it up.
+#   - The white LED is driven inverse to the relay: lit when the load is
+#     OFF, so the switch is findable in a dark room.
+#   - The red LED is bound to status_led and reflects Wi-Fi/API health,
+#     so it is not separately controllable.
+#   - This config has no restart / safe-mode buttons, unlike its SS02
+#     3-way sibling. Worth adding for parity.
+# ============================================================
+
 substitutions:
   device_name: treatlife-ss02s
   friendly_devicename: "Treatlife SS02S Single Pole"
@@ -5,6 +44,7 @@ substitutions:
   default_update_interval: 60s
 
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/esp01_1m.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -15,6 +55,9 @@ substitutions:
 <<: !include components/web_server.yaml
 <<: !include components/wifi_auth.yaml
 
+# ---- Binary Sensors ------------------------------------------
+# Physical paddle. internal: True keeps it out of HA — it only
+# toggles the relay locally.
 binary_sensor:
   - <<: !include components/binary_sensor/status.yaml
   - platform: gpio
@@ -25,6 +68,9 @@ binary_sensor:
     on_press:
       - switch.toggle: switch_id
 
+# ---- Switches ------------------------------------------------
+# The relay is the user-facing entity; led_id is internal and driven
+# inverse to it (lit when load is off).
 switch:
   - platform: gpio
     id: switch_id
@@ -50,15 +96,19 @@ switch:
 #  - platform: gpio
 #    pin: GPIO4
 #    id: white_led_output
+# ---- Status LED ----------------------------------------------
+# Red LED = Wi-Fi / API health. Managed by ESPHome, not controllable.
 status_led:
   # Red LED
   pin: 
     number: GPIO5
     inverted: yes
 
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
 
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml

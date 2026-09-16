@@ -1,9 +1,77 @@
+# ============================================================
+# TreatLife DP12 — Outdoor Smart Dimmer Plug (two sockets)
+# ============================================================
+# Hardware:
+#   Module        — CB3S (purchased December 2024; chip marking not yet
+#                   confirmed from photos — CB3S normally carries a
+#                   Beken BK7231N, but some TreatLife units in the wild
+#                   ship BK7231T instead. Verify before assuming.)
+#   Board target  — cb3s (see boards/cb3s-dp12.yaml)
+#   Control       — TuyaMCU over UART; the Tuya MCU owns both triacs,
+#                   ESPHome only exchanges datapoints with it.
+#
+# UART / MCU:
+#   P10 — RX      P11 — TX      115200 baud
+#
+# Rated load (per TreatLife): 600W total, 300W max per socket
+#
+# Flashing:
+#   Converted with Tuya-CloudCutter using the DP10 profile — at the time
+#   no DP12-specific profile existed, and the DP10 profile worked.
+#   https://github.com/tuya-cloudcutter/tuya-cloudcutter
+#
+# In service:
+#   Controls outdoor Christmas lights and inflatables. Two sockets are
+#   independently dimmable, which is unusual for this class of plug.
+#
+# Notes specific to this device:
+#   - boards/cb3s-dp12.yaml pulls in components/esphome_dp12.yaml, which
+#     forces BOTH outlet_1 and outlet_2 to full brightness in on_boot.
+#     The Tuya MCU does not reliably restore brightness across a power
+#     cycle. The DP10 variant of this file only addresses outlet_1 — do
+#     not swap them.
+#   - Inflatables are motor loads, not dimmable lighting. Whichever
+#     socket drives one should be left at full brightness; dimming a
+#     blower is not meaningful and may stall it.
+#
+# Tuya datapoints (dpIDs):
+#   1   — switch, socket 1
+#   2   — dimmer 1, current brightness
+#   3   — dimmer 1, minimum brightness (10% = 100, 100% = 1000)
+#   4   — unidentified (enum, observed value 0)
+#   6   — unidentified (enum, observed value 0)
+#   7   — switch, socket 2
+#   8   — dimmer 2, current brightness
+#   9   — dimmer 2, minimum brightness (10% = 100, 100% = 1000)
+#   10  — dimming mode: LED / incandescent / halogen
+#   12  — unidentified (int, observed value 0)
+#   21  — unidentified (enum, observed value 1)
+#   101 — unidentified (raw, observed 06.00.00)
+#   103 — unidentified (raw, observed 00.00.00)
+#
+#   Reference MCU dump from first boot:
+#     [C][tuya:069]:   Datapoint 7:   switch (value: OFF)
+#     [C][tuya:071]:   Datapoint 8:   int value (value: 100)
+#     [C][tuya:071]:   Datapoint 9:   int value (value: 100)
+#     [C][tuya:075]:   Datapoint 10:  enum (value: 0)
+#     [C][tuya:069]:   Datapoint 1:   switch (value: OFF)
+#     [C][tuya:071]:   Datapoint 2:   int value (value: 100)
+#     [C][tuya:071]:   Datapoint 3:   int value (value: 100)
+#     [C][tuya:075]:   Datapoint 4:   enum (value: 0)
+#     [C][tuya:071]:   Datapoint 12:  int value (value: 0)
+#     [C][tuya:071]:   Datapoint 6:   int value (value: 0)
+#     [C][tuya:075]:   Datapoint 21:  enum (value: 1)
+#     [C][tuya:066]:   Datapoint 103: raw (value: 00:00:00)
+#     [C][tuya:066]:   Datapoint 101: raw (value: 06:00:00)
+# ============================================================
+
 substitutions:
   device_name: treatlife-dp12
   friendly_devicename: Treatlife DP12
   comment: "Treatlife Smart Dimmer Plug with 2 Sockets (DP12)"
   default_update_interval: 60s
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/cb3s-dp12.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -25,6 +93,8 @@ uart:
 tuya:
   time_id: sntp_time
 
+# ---- Lights --------------------------------------------------
+# Two independently dimmable sockets, each a separate light entity.
 light:
   - platform: "tuya"
     name: "Outlet 1 - Dimmer"
@@ -41,7 +111,9 @@ light:
     min_value: 10
     max_value: 1000
 
-# This allows you to control the Dimming Mode and how the led operates when the load is on or off.
+# ---- Numbers (config entities) -------------------------------
+# Per-socket dimming floor, for loads that cut out at the bottom
+# of the range.
 number:
   - platform: "tuya"
     id: outlet1_min_brightness
@@ -60,6 +132,9 @@ number:
     step: 10
     entity_category: config
 
+# ---- Selects (config entities) -------------------------------
+# NOTE: one dimming mode for the WHOLE device (dp 10), not per socket.
+# Both outlets must therefore run the same class of load.
 select:
   - platform: "tuya"
     id: dimmer_mode
@@ -70,39 +145,11 @@ select:
       1: Incandescent # Index 1
       2: Halogen # Index 2
 
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
 
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml
-
-# Datapoint # - Description
-# 1 - switch 1
-# 2 - dimmer 1 - current brightness
-# 3 - dimmer 1 - brightness min = 100 Diming Range 10%= 100, 100%=1000
-# 4 - ???? - (enum value: 0)
-# 6 - ???? -  (enum value: 0)
-# 7 - switch 2
-# 8 - dimmer 2 = current brightness
-# 9 - dimmer 2 - brightness min = 100 Diming Range 10%= 100, 100%=1000
-# 10 - dimming mode = LED, incandescent, halogen
-# 12 - ???? - (int value : 0)
-# 21 - ???? - (enum value: 1)
-# 101 - ???? -  (raw value: 06.00.00)
-# 103 - ???? - (raw value: 00.00.00)
-
-#[16:01:25.825][C][tuya:052]: Tuya:
-#[16:01:25.825][C][tuya:069]:   Datapoint 7: switch (value: OFF)
-#[16:01:25.831][C][tuya:071]:   Datapoint 8: int value (value: 100)
-#[16:01:25.831][C][tuya:071]:   Datapoint 9: int value (value: 100)
-#[16:01:25.831][C][tuya:075]:   Datapoint 10: enum (value: 0)
-#[16:01:25.832][C][tuya:069]:   Datapoint 1: switch (value: OFF)
-#[16:01:25.837][C][tuya:071]:   Datapoint 2: int value (value: 100)
-#[16:01:25.837][C][tuya:071]:   Datapoint 3: int value (value: 100)
-#[16:01:25.840][C][tuya:075]:   Datapoint 4: enum (value: 0)
-#[16:01:25.840][C][tuya:071]:   Datapoint 12: int value (value: 0)
-#[16:01:25.845][C][tuya:071]:   Datapoint 6: int value (value: 0)
-#[16:01:25.845][C][tuya:075]:   Datapoint 21: enum (value: 1)
-#[16:01:25.848][C][tuya:066]:   Datapoint 103: raw (value: 00:00:00)
-#[16:01:25.848][C][tuya:066]:   Datapoint 101: raw (value: 06:00:00)

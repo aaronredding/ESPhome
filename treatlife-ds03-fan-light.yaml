@@ -1,9 +1,46 @@
+# ============================================================
+# TreatLife DS03 — Smart Ceiling Fan + Light Dimmer Switch
+# ============================================================
+# Hardware:
+#   Module        — TYWE3S (ESP8266-based Tuya module)
+#   Board target  — esp01_1m (see boards/esp01_1m.yaml)
+#   Control       — TuyaMCU over UART. ESPHome does not switch the fan
+#                   or dim the light directly; the Tuya MCU owns both
+#                   and is driven entirely through datapoints.
+#
+# UART / MCU:
+#   GPIO3 — RX     GPIO1 — TX     115200 baud
+#   Note: GPIO1/GPIO3 are the ESP8266's hardware UART, so serial logging
+#   and the Tuya MCU cannot share the port. Log over the network instead.
+#
+# In service:
+#   Controls a ceiling fan (4 speeds) and its dimmable light kit.
+#
+# Notes specific to this device:
+#   - Fan speed is a 4-step MCU-side setting (dp 3), not a PWM output.
+#     ESPHome just requests a step; the MCU handles the rest.
+#   - The light restores to OFF on boot rather than restoring its prior
+#     state — deliberate, so a power blip doesn't light the room at 2am.
+#   - dp 105 (minimum brightness) is confirmed and tested on this unit.
+#   - dp 102 on the closely-related DP10 is a "light follow mode"
+#     (Follow / Opposite) controlling the indicator LED. Not verified on
+#     the DS03 and not exposed here — worth probing if you want it.
+#
+# Tuya datapoints (dpIDs):
+#   1   — fan switch (on/off)
+#   3   — fan speed (4 steps)
+#   9   — light switch (on/off)
+#   10  — light dimmer level
+#   105 — light minimum brightness (confirmed/tested)
+# ============================================================
+
 substitutions:
   device_name: treatlife-ds03
   friendly_devicename: Treatlife ds03
   comment: "Treatlife Fan Dimmer (DS03)"
   default_update_interval: 60s
 
+# ---- Shared includes -----------------------------------------
 <<: !include boards/esp01_1m.yaml
 <<: !include components/api.yaml
 <<: !include components/captive_portal.yaml
@@ -15,17 +52,24 @@ substitutions:
 <<: !include components/web_server.yaml
 <<: !include components/wifi_auth.yaml
 
+# ---- TuyaMCU -------------------------------------------------
+# Loads the Tuya library and pushes network time down to the MCU.
 tuya:
   time_id: sntp_time
 
+# ---- UART ----------------------------------------------------
+# Link to the Tuya MCU. Occupies the hardware UART — see header.
 uart:
   rx_pin: GPIO3
   tx_pin: GPIO1
   baud_rate: 115200
 
+# ---- Binary Sensors ------------------------------------------
 binary_sensor:
   - <<: !include components/binary_sensor/status.yaml
 
+# ---- Lights --------------------------------------------------
+# The fan's dimmable light kit.
 light:
   - platform: "tuya"
     id: light_id
@@ -36,6 +80,8 @@ light:
     max_value: 1000
     restore_mode: RESTORE_DEFAULT_OFF
 
+# ---- Fan -----------------------------------------------------
+# 4 discrete MCU-side speeds, not a variable PWM output.
 fan:
   - platform: "tuya"
     name: "Fan Speed"
@@ -43,6 +89,8 @@ fan:
     speed_datapoint: 3
     speed_count: 4
 
+# ---- Numbers (config entities) -------------------------------
+# Dimming floor for the light kit (dp 105, confirmed).
 number:
   - platform: "tuya"
     name: "Min Brightness"
@@ -53,18 +101,11 @@ number:
     number_datapoint: 105
 
 
+# ---- Sensors -------------------------------------------------
 sensor:
   - <<: !include components/sensor/wifi_signal.yaml
   - <<: !include components/sensor/uptime.yaml
 
+# ---- Text Sensors --------------------------------------------
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml
-
-# Datapoint notes
-#1 - FAN - SWITCH(ON/OFF)
-#3 - FAN - SPEED CONTROL
-
-#9 - LIGHT - SWITCH(ON/OFF)
-#10 - LIGHT - DIMMER CONTROL
-
-#105 - Minimum brightness = 10
