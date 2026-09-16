@@ -1,6 +1,6 @@
 substitutions:
-  device_name: treatlife-dp12
-  friendly_devicename: Treatlife DP12
+  device_name: outdoor-dp12-1
+  friendly_devicename: Outdoor DP12-1
   comment: "Treatlife Smart Dimmer Plug with 2 Sockets (DP12)"
   default_update_interval: 60s
 
@@ -77,13 +77,14 @@ sensor:
 text_sensor:
   - <<: !include components/text_sensor/wifi_info.yaml
 
+# Datapoint # - Description
 # 1 - switch 1
-# 2 - dimmer 1 - current
+# 2 - dimmer 1 - current brightness
 # 3 - dimmer 1 - brightness min = 100 Diming Range 10%= 100, 100%=1000
 # 4 - ???? - (enum value: 0)
 # 6 - ???? -  (enum value: 0)
 # 7 - switch 2
-# 8 - dimmer 2 = 763
+# 8 - dimmer 2 = current brightness
 # 9 - dimmer 2 - brightness min = 100 Diming Range 10%= 100, 100%=1000
 # 10 - dimming mode = LED, incandescent, halogen
 # 12 - ???? - (int value : 0)
